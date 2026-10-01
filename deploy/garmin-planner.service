@@ -1,0 +1,24 @@
+[Unit]
+Description=Garmin Training Planner
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=garmin-planner
+Group=garmin-planner
+WorkingDirectory=/opt/garmin-planner
+EnvironmentFile=/etc/garmin-planner/environment
+ExecStart=/opt/garmin-planner/.venv/bin/python -m garmin_planner serve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/garmin-planner
+
+[Install]
+WantedBy=multi-user.target

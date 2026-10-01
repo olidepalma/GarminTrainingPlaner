@@ -1,0 +1,13 @@
+GTP_HOST=192.168.1.50
+GTP_PORT=8000
+GTP_PUBLIC_ORIGIN=https://entrenamiento.example.com
+# Sustituye GTP_HOST por la IP local fija de este LXC.
+# Si el proxy está en el mismo LXC, usa GTP_HOST=127.0.0.1.
+# Sustituye 192.168.1.10 por la IP real del LXC de Nginx Proxy Manager.
+# El firewall debe permitir el puerto 8000 únicamente desde ese proxy y loopback.
+GTP_TRUSTED_PROXY_IPS=127.0.0.1,::1,192.168.1.10
+GTP_DATA_DIR=/var/lib/garmin-planner
+GTP_TIMEZONE=Europe/Madrid
+GTP_AUTO_SYNC=true
+GTP_SYNC_HOUR=3
+GTP_INITIAL_DAYS=90

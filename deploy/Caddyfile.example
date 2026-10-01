@@ -1,0 +1,5 @@
+# Proxy en el mismo LXC. Sustituye el dominio y configura DNS antes de arrancarlo.
+entrenamiento.example.com {
+    reverse_proxy 127.0.0.1:8000
+    encode zstd gzip
+}

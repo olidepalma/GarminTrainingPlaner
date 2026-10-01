@@ -1,0 +1,39 @@
+# Secretos y configuración privada
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+tokens/
+.garminconnect/
+.garth/
+*.pem
+*.key
+
+# Datos personales y copias
+data/
+backups/
+exports/
+public/data/
+*.sqlite
+*.sqlite3
+*.db
+*.fit
+*.gpx
+*.tcx
+*.log
+
+# Artefactos de desarrollo
+.venv/
+.tooling/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+build/
+.next/
+coverage/
+.DS_Store
