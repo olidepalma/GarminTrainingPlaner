@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Ejecutar como root desde el checkout definitivo (/opt/garmin-planner).
+# Ejecutar como root desde el checkout definitivo (/opt/GarminTrainingPlaner).
 set -euo pipefail
 if [[ ${EUID} -ne 0 ]]; then
   echo 'Ejecuta este instalador como root dentro del LXC.' >&2
   exit 1
 fi
 project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-if [[ "$project_root" != /opt/garmin-planner ]]; then
-  echo 'Coloca el checkout en /opt/garmin-planner antes de instalar.' >&2
+if [[ "$project_root" != /opt/GarminTrainingPlaner ]]; then
+  echo 'Coloca el checkout en /opt/GarminTrainingPlaner antes de instalar.' >&2
   exit 1
 fi
 uv_bin=${GTP_UV_BIN:-/opt/gtp-tools/bin/uv}

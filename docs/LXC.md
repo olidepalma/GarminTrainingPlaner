@@ -10,17 +10,17 @@ Comandos para un LXC basado en Debian/Ubuntu; concretar distribución, SSH, domi
 apt update
 apt install -y git python3 python3-venv ca-certificates openssh-server
 useradd --system --home-dir /var/lib/garmin-planner --create-home --shell /usr/sbin/nologin garmin-planner
-install -d -m 0755 /opt/garmin-planner /opt/gtp-tools
+install -d -m 0755 /opt/GarminTrainingPlaner /opt/gtp-tools
 install -d -m 0700 -o garmin-planner -g garmin-planner /var/lib/garmin-planner
 install -d -m 0750 /etc/garmin-planner
 python3 -m venv /opt/gtp-tools
 /opt/gtp-tools/bin/pip install uv==0.12.21
 ```
 
-`useradd` solo se ejecuta en la instalación inicial. El código se copia a `/opt/garmin-planner` mediante Git o SCP, sin `.venv`, `.env`, `data` ni archivos de desarrollo. No hay remoto Git configurado: no inventes una URL de clonación. El entorno virtual debe crearse en Linux. Desde esa carpeta:
+`useradd` solo se ejecuta en la instalación inicial. El código se copia a `/opt/GarminTrainingPlaner` mediante Git o SCP, sin `.venv`, `.env`, `data` ni archivos de desarrollo. El repositorio es `https://github.com/olidepalma/GarminTrainingPlaner.git`. Si todavía no tienes el checkout, clónalo con `git clone https://github.com/olidepalma/GarminTrainingPlaner.git /opt/GarminTrainingPlaner` (el directorio de destino debe estar vacío). El entorno virtual debe crearse en Linux. Desde esa carpeta:
 
 ```sh
-cd /opt/garmin-planner
+cd /opt/GarminTrainingPlaner
 UV_PYTHON_INSTALL_DIR=/opt/gtp-python /opt/gtp-tools/bin/uv sync --locked --no-dev --python 3.12
 chmod -R a+rX /opt/gtp-python
 install -m 0640 deploy/environment.example /etc/garmin-planner/environment
@@ -50,7 +50,7 @@ No mezcles dos bases de datos ni restaures encima de datos activos. Conserva el 
 OpenAI requiere un identificador estable propio del servidor. Tras importar secretos, crea uno nuevo **una sola vez**, antes del primer arranque:
 
 ```sh
-cd /opt/garmin-planner
+cd /opt/GarminTrainingPlaner
 runuser -u garmin-planner -- .venv/bin/python -c 'import uuid; from pathlib import Path; from garmin_planner.storage import Vault; Vault(Path("/var/lib/garmin-planner")).write("host", {"id": "urn:uuid:" + str(uuid.uuid4())})'
 ```
 
@@ -98,7 +98,7 @@ Este repositorio proporciona configuración y validaciones; la instalación real
 
 ## Instalación y actualizaciones desde el repositorio
 
-Con `uv` preparado, el checkout en `/opt/garmin-planner` y como root:
+Con `uv` preparado, el checkout en `/opt/GarminTrainingPlaner` y como root:
 
 ```sh
 bash deploy/install-lxc.sh
@@ -112,7 +112,7 @@ El instalador conserva la configuración existente, crea el entorno de Linux, in
 Para próximas versiones, con un remoto Git configurado y el checkout limpio:
 
 ```sh
-cd /opt/garmin-planner
+cd /opt/GarminTrainingPlaner
 git pull --ff-only
 bash deploy/update-lxc.sh
 ```

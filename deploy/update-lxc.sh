@@ -7,8 +7,8 @@ if [[ ${EUID} -ne 0 ]]; then
   exit 1
 fi
 project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-if [[ "$project_root" != /opt/garmin-planner ]]; then
-  echo 'El checkout debe estar en /opt/garmin-planner.' >&2
+if [[ "$project_root" != /opt/GarminTrainingPlaner ]]; then
+  echo 'El checkout debe estar en /opt/GarminTrainingPlaner.' >&2
   exit 1
 fi
 uv_bin=${GTP_UV_BIN:-/opt/gtp-tools/bin/uv}
