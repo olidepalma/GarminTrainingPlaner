@@ -131,5 +131,14 @@ def test_modular_routes_keep_authentication_and_serve_module_assets(tmp_path):
             assert client.get(path).status_code == 401
         home = client.get("/").text
         assert 'type="module"' in home
+        import re
+
+        stylesheet_url = re.search(r'href="(/assets/style-[a-f0-9]+\.css)"', home).group(1)
+        stylesheet = client.get(stylesheet_url)
+        assert stylesheet.status_code == 200
+        assert stylesheet.headers["content-type"].startswith("text/css")
+        assert stylesheet.headers["cache-control"] == "no-store"
+        assert "border-left: 4px solid #86a35f" in stylesheet.text
+        assert ".slot-heading" in stylesheet.text
         assert client.get("/static/modules/calendar.js").status_code == 200
         assert client.get("/static/modules/core.js").status_code == 200
