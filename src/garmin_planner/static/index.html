@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Garmin Training Planner</title>
-  <link rel="stylesheet" href="/static/style.css"><script defer src="/static/app.js"></script>
+  <link rel="stylesheet" href="/static/style.css"><script type="module" src="/static/app.js"></script>
 </head>
 <body>
   <section id="login-view" class="login-shell">
@@ -68,7 +68,7 @@
             <fieldset id="coach-sports"><legend>Disciplinas disponibles</legend></fieldset>
             <label class="check"><input id="coach-strength" type="checkbox"> Incluir fuerza</label>
             <label for="coach-max-days">Máximo de días de entrenamiento por semana</label><input id="coach-max-days" type="number" min="1" max="7" value="5" required>
-            <p>Selecciona las franjas disponibles de cada día y su duración. Dos franjas separadas no forman una sesión continua. Bici + carrera de transición pueden compartir una franja.</p><div id="coach-availability" class="connection-grid"></div>
+            <p>Selecciona las franjas disponibles de cada día, su duración y tu preferencia de deporte. Puedes elegir carrera / atletismo para los días de club y dejar el resto sin preferencia. Dos franjas separadas no forman una sesión continua. Bici + carrera de transición pueden compartir una franja.</p><div id="coach-availability" class="connection-grid"></div>
             <label for="coach-long-run">Día de tirada larga de carrera / trail</label><select id="coach-long-run"></select>
             <label for="coach-long-bike">Día de salida larga en bici</label><select id="coach-long-bike"></select>
             <label class="check"><input id="coach-garmin-zones" type="checkbox" checked> Incluir las estadísticas Garmin en el coach: zonas, FTP, umbrales, VO₂ máx. y pronósticos</label><p id="coach-garmin-summary" class="muted"></p><label for="coach-zones">Correcciones o referencias adicionales (opcional)</label><textarea id="coach-zones" maxlength="1500" rows="3"></textarea>

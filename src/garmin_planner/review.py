@@ -30,9 +30,9 @@ def weekly_review(store, today):
     planned = defaultdict(lambda: {"sessions": 0, "minutes": 0})
     from garmin_planner.workouts import Workouts
 
-    proposals = store.get("coach_calendar", []) + Workouts(store, None).list(
-        begin.isoformat(), end.isoformat()
-    )
+    proposals = [
+        item["session"] for item in store.planned_sessions(begin.isoformat(), end.isoformat())
+    ] + Workouts(store, None).list(begin.isoformat(), end.isoformat())
     for s in proposals:
         if begin.isoformat() <= s["day"] <= end.isoformat():
             planned[s["sport"]]["sessions"] += 1

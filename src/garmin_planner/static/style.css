@@ -14,3 +14,26 @@ fieldset { border:1px solid #dde3d7; border-radius:10px; padding:16px; margin:16
 .library-document{border-top:1px solid var(--line,#ddd);padding:1.2rem 0}.library-document button{margin:.5rem .6rem .5rem 0}.library-document details{margin-top:.6rem}.library-document summary,#coach-source-audit summary{cursor:pointer;line-height:1.5}#library-preview-body p,#coach-source-audit p{white-space:pre-wrap;overflow-wrap:anywhere}#library-preview{max-width:760px;width:90%}#coach-source-audit details{margin-bottom:1rem}#library-file{max-width:100%}
 
 #workout-editor,#workout-send-dialog{width:min(960px,94vw);max-width:960px;max-height:90vh;overflow:auto}#workout-send-json{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem}.workout-block{border:1px solid var(--line,#ddd);padding:1rem;border-radius:10px;margin:.8rem 0}.workout-step-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}.workout-block button{margin:.5rem .6rem 0 0}.workout-block h4{margin:.2rem 0 .8rem}#workout-send-blocks li{padding:.3rem 0}@media(max-width:650px){.workout-step-fields{grid-template-columns:1fr}}
+
+.slot-row {
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid #d6ded7;
+  border-left: 4px solid #86a35f;
+  border-radius: 10px;
+  background: #f7f9f3;
+  gap: 12px;
+}
+.slot-heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #31543d;
+  font-size: .9rem;
+  font-weight: 650;
+}
+.slot-row label { margin: 0; min-width: 0; }
+.slot-row input, .slot-row select { display: block; width: 100%; min-width: 0; margin-top: 6px; }
+.slot-preference { grid-column: 1 / -1; }
+@media(max-width:420px) {
+  .slot-row { grid-template-columns: minmax(0,1fr); padding: 12px; }
+}

@@ -316,36 +316,7 @@ class Workouts:
         return {"ok": True}
 
     def remove_coach(self, source, draft=False):
-        key = "coach_draft" if draft else "coach_calendar"
-        with self.store.connect() as db:
-            db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
-            value = json.loads(row["value"]) if row else None
-            sessions = value["plan"]["sessions"] if draft and value else value or []
-            session = next((s for s in sessions if session_key(s) == source), None)
-            if not session:
-                raise GarminError(
-                    "La sesión cambió o ya no está en el calendario. Actualiza la vista."
-                )
-            sessions.remove(session)
-            if draft:
-                value["plan"]["sessions"] = sessions
-            else:
-                value = sessions
-            archive_row = db.execute(
-                "SELECT value FROM meta WHERE key='removed_coach_sessions'"
-            ).fetchone()
-            archive = json.loads(archive_row["value"]) if archive_row else []
-            archive.append(
-                {"session": session, "draft": draft, "removed_at": datetime.now(UTC).isoformat()}
-            )
-            db.execute(
-                "INSERT INTO meta(key,value) VALUES('removed_coach_sessions',?) "
-                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-                (json.dumps(archive),),
-            )
-            db.execute("UPDATE meta SET value=? WHERE key=?", (json.dumps(value), key))
-        return {"ok": True}
+        return self.store.remove_coach_session(source, draft)
 
     def from_coach(self, source):
         sessions = self.store.get("coach_calendar", [])

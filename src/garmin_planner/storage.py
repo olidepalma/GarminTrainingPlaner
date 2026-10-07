@@ -12,6 +12,8 @@ from pathlib import Path
 
 from cryptography.fernet import Fernet
 
+from garmin_planner.planned_sessions import PlannedSessions
+
 
 def private_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -75,6 +77,7 @@ class Store:
                 CREATE INDEX IF NOT EXISTS activity_day ON activities(day);
                 CREATE TABLE IF NOT EXISTS wellness (day TEXT PRIMARY KEY, payload TEXT NOT NULL);
             """)
+            PlannedSessions.migrate(db)
         if os.name != "nt":
             self.path.chmod(0o600)
 
@@ -90,12 +93,25 @@ class Store:
 
     def get(self, key: str, default=None):
         with self.connect() as db:
-            row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
-        return json.loads(row[0]) if row else default
+            return PlannedSessions.get(db, key, default)
 
     def set(self, key: str, value) -> None:
         with self.connect() as db:
-            db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", (key, json.dumps(value)))
+            db.execute("BEGIN IMMEDIATE")
+            if key in ("coach_calendar", "coach_draft"):
+                PlannedSessions.set(db, key, value)
+            else:
+                db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", (key, json.dumps(value)))
+
+    def planned_sessions(self, start=None, end=None, draft=False):
+        with self.connect() as db:
+            return PlannedSessions.listing(db, "draft" if draft else "accepted", start, end)
+
+    def remove_coach_session(self, source, draft=False):
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            PlannedSessions.remove(db, source, draft)
+        return {"ok": True}
 
     def setup(self, password: str) -> None:
         salt = secrets.token_bytes(16)
@@ -192,18 +208,21 @@ class Store:
                 or fingerprint(json.loads(config[0])) != accepted["setup_hash"]
             ):
                 raise ProError("El perfil o el borrador cambió. Revisa antes de guardar.")
-            previous = db.execute("SELECT value FROM meta WHERE key='coach_calendar'").fetchone()
-            calendar = json.loads(previous[0]) if previous else []
             from datetime import date, timedelta
 
-            start = date.fromisoformat(accepted["start"])
-            end = (start + timedelta(days=7)).isoformat()
-            calendar = [s for s in calendar if not (accepted["start"] <= s["day"] < end)]
-            calendar.extend(accepted["plan"]["sessions"])
+            end = (date.fromisoformat(accepted["start"]) + timedelta(days=7)).isoformat()
+            db.execute(
+                "UPDATE planned_sessions SET deleted=1 WHERE kind='accepted' AND "
+                "deleted=0 AND day>=? AND day<?",
+                (accepted["start"], end),
+            )
+            PlannedSessions.insert(db, accepted["plan"]["sessions"], "accepted", accepted["id"])
+            db.execute("INSERT OR REPLACE INTO meta VALUES ('coach_calendar_initialized','true')")
             db.execute(
                 "INSERT OR REPLACE INTO coach_history VALUES (?, ?, ?)",
                 (accepted["id"], accepted["start"], json.dumps(accepted)),
             )
-            for key, value in [("coach_calendar", calendar), ("coach_accepted", accepted)]:
+            for key, value in [("coach_accepted", accepted)]:
                 db.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)", (key, json.dumps(value)))
+            db.execute("UPDATE planned_sessions SET deleted=1 WHERE kind='draft' AND deleted=0")
             db.execute("DELETE FROM meta WHERE key='coach_draft'")

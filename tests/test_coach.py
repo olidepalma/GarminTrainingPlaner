@@ -315,3 +315,38 @@ def test_strength_list_generation_and_missing_details(tmp_path):
         Coach(store, FakePro(Plan.model_validate(data)), "Europe/Madrid").generate(
             Generate(start=today, mode="initial")
         )
+
+
+def test_slot_sport_preferences_persist_and_reach_coach(tmp_path):
+    today = date(2026, 10, 5)
+    settings = setup(today)
+    settings["profile"]["slots"] = [[{"period": "afternoon", "minutes": 90}] for _ in range(7)]
+    for weekday in (1, 3):
+        settings["profile"]["slots"][weekday][0]["preferred_sport"] = "running"
+    validated = Setup.model_validate(settings).model_dump(mode="json")
+    assert validated["profile"]["slots"][0][0]["preferred_sport"] is None
+    store = Store(tmp_path / "planner.sqlite3")
+    store.set("coach_setup", validated)
+    restored = store.get("coach_setup")
+    summary = context(store, restored, today, today)
+    assert summary["setup"]["profile"]["slots"][1][0]["preferred_sport"] == "running"
+    assert summary["setup"]["profile"]["slots"][3][0]["preferred_sport"] == "running"
+    settings["profile"]["slots"][0][0]["preferred_sport"] = "invalid"
+    with pytest.raises(ValidationError):
+        Setup.model_validate(settings)
+
+
+def test_slot_preference_mismatch_warns_without_rejecting_plan():
+    today = date(2026, 10, 5)
+    settings = setup(today)
+    settings["profile"]["slots"] = [
+        [{"period": "afternoon", "minutes": 90, "preferred_sport": "running"}] for _ in range(7)
+    ]
+    proposed = plan(today)
+    for session in proposed.sessions:
+        session.slot = 0
+    warnings = validate_plan(proposed, settings, today)
+    # A bike/run transition satisfies the running preference in the shared slot.
+    assert len(warnings) == 1
+    assert str(today + timedelta(days=1)) in warnings[0]
+    assert "deporte preferido" in warnings[0]

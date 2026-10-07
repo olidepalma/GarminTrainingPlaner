@@ -44,6 +44,10 @@ Abre **Biblioteca**, sube el documento y pulsa **Procesar documento**. Revisa la
 
 En **Coach y objetivos** puedes comparar minutos y sesiones planificadas con actividades registradas por disciplina, ver variaciones de volumen respecto a semanas previas y guardar tus sensaciones. La generación incorpora ese resumen, las estadísticas Garmin habilitadas y hasta seis extractos locales de las fuentes seleccionadas. Las referencias enviadas y las citadas aparecen en el borrador.
 
+## Organización del código y persistencia
+
+Servidor y rutas separados por función, interfaz en módulos ES y sesiones del coach en una tabla con identificadores estables. La migración conserva calendarios existentes. Consulta [la arquitectura y actualización](docs/ARQUITECTURA.md).
+
 ## Principios
 
 - Datos y calendario persistentes bajo control de la usuaria.

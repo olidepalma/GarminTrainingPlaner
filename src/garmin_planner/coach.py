@@ -25,6 +25,7 @@ class Strict(BaseModel):
 class Slot(Strict):
     period: Literal["morning", "midday", "afternoon", "evening", "any"] = "any"
     minutes: int = Field(ge=5, le=480)
+    preferred_sport: Literal["running", "trail", "cycling", "swimming", "strength"] | None = None
 
 
 class Profile(Strict):
@@ -166,6 +167,7 @@ def validate_plan(plan, setup, start, reserved=None):
     profile = Setup.model_validate(setup).profile
     totals, hard = defaultdict(int), set()
     slot_totals = defaultdict(int)
+    slot_sports = defaultdict(set)
     reserved = reserved or []
     for own in reserved:
         own_day = date.fromisoformat(own["day"])
@@ -188,6 +190,7 @@ def validate_plan(plan, setup, start, reserved=None):
             if session.slot is None or session.slot >= len(slots):
                 raise ProError("Cada sesión debe indicar una franja disponible (slot desde 0).")
             slot_totals[session.day, session.slot] += session.minutes
+            slot_sports[session.day, session.slot].add(session.sport)
             if slot_totals[session.day, session.slot] > slots[session.slot].minutes:
                 raise ProError(
                     "Las sesiones superan el tiempo de una franja. "
@@ -210,6 +213,13 @@ def validate_plan(plan, setup, start, reserved=None):
     ):
         raise ProError("El plan supera tu disponibilidad. Reduce o redistribuye las sesiones.")
     warnings = []
+    for (day, index), assigned_sports in slot_sports.items():
+        preferred = profile.slots[day.weekday()][index].preferred_sport
+        if preferred and preferred not in assigned_sports:
+            warnings.append(
+                f"La franja {index + 1} del {day.isoformat()} no incluye tu deporte preferido. "
+                "Revisa la justificación del coach."
+            )
     if not plan.sessions:
         warnings.append(
             "La semana no contiene sesiones. Revisa si corresponde a descanso completo."
@@ -348,6 +358,11 @@ natación/bici/carrera en triatlón, fuerza solo si se pide; modela transiciones
 sesiones el mismo día con instrucciones enlazadas. Respeta la suma de minutos por día, max_days
 y días de tiradas largas; availability va de lunes a domingo.
 Si profile.slots existe, cada sesión necesita slot: índice de franja desde 0 en ese día.
+Cada franja puede tener preferred_sport: null significa sin preferencia. Prioriza ese deporte
+para esa franja (por ejemplo, running para entrenar con un club), respetando las disciplinas
+habilitadas, la disponibilidad y la recuperación. Es una preferencia, no una obligación de
+entrenar con lesión o fatiga. Si necesitas apartarte de ella, explica el motivo en rationale.
+Las franjas sin preferencia permiten distribuir los deportes según los objetivos multideporte.
 Respeta la suma de minutos de cada franja y su horario (morning/midday/afternoon/evening/any).
 own_sessions_in_requested_week son sesiones propias ya planificadas. Integra su volumen
 por disciplina y tiempo disponible; no las repitas como sesiones nuevas del coach.

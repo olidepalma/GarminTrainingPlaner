@@ -36,7 +36,8 @@ def month_calendar(store, year, month, workouts=None):
             )
     accepted = store.get("coach_accepted")
     profile = (store.get("coach_setup") or {}).get("profile", {})
-    for i, session in enumerate(store.get("coach_calendar", [])):
+    for item in store.planned_sessions(start.isoformat(), end.isoformat()):
+        session = item["session"]
         if start.isoformat() <= session["day"] <= end.isoformat():
             slot = session.get("slot")
             # El perfil vigente puede haber cambiado; no inventar horarios antiguos.
@@ -54,7 +55,7 @@ def month_calendar(store, year, month, workouts=None):
                         period = slots[date.fromisoformat(session["day"]).weekday()][slot]["period"]
             entries.append(
                 {
-                    "id": f"planned-{i}",
+                    "id": "planned-" + item["id"],
                     "kind": "planned",
                     "day": session["day"],
                     "sport": session["sport"],
@@ -68,11 +69,12 @@ def month_calendar(store, year, month, workouts=None):
         from garmin_planner.coach import fingerprint
 
         if draft["setup_hash"] == fingerprint(store.get("coach_setup")):
-            for i, session in enumerate(draft["plan"]["sessions"]):
+            for item in store.planned_sessions(start.isoformat(), end.isoformat(), draft=True):
+                session = item["session"]
                 if start.isoformat() <= session["day"] <= end.isoformat():
                     entries.append(
                         {
-                            "id": f"draft-{i}",
+                            "id": "draft-" + item["id"],
                             "kind": "planned",
                             "is_draft": True,
                             "day": session["day"],
