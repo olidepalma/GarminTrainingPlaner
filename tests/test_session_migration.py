@@ -142,3 +142,63 @@ def test_modular_routes_keep_authentication_and_serve_module_assets(tmp_path):
         assert ".slot-heading" in stylesheet.text
         assert client.get("/static/modules/calendar.js").status_code == 200
         assert client.get("/static/modules/core.js").status_code == 200
+
+
+def test_versioned_module_graph_serves_relative_imports_and_rejects_other_files(tmp_path):
+    import re
+    from urllib.parse import urljoin
+
+    with TestClient(
+        create_app(Settings(_env_file=None, data_dir=tmp_path, auto_sync=False)),
+        base_url="http://127.0.0.1:8000",
+    ) as client:
+        home = client.get("/")
+        script = re.search(r'src="(/assets/js-[a-f0-9]+/app\.js)"', home.text).group(1)
+        pending, visited = [script], set()
+        while pending:
+            path = pending.pop()
+            if path in visited:
+                continue
+            visited.add(path)
+            response = client.get(path)
+            assert response.status_code == 200
+            assert response.headers["content-type"].startswith("text/javascript")
+            assert response.headers["cache-control"] == "no-store"
+            for relative in re.findall(r'from\s+["\']([^"\']+)["\']', response.text):
+                assert relative.startswith("./")
+                pending.append(urljoin(path, relative))
+        calendar = urljoin(script, "./modules/calendar.js")
+        assert calendar in visited
+        assert "Marcar como realizada" in client.get(calendar).text
+        assert len(visited) >= 10
+        assert (
+            client.get(urljoin(script, "./modules/calendar.js")).content
+            == client.get("/static/modules/calendar.js").content
+        )
+        assert client.get(urljoin(script, "./.env")).status_code == 404
+        assert client.get(urljoin(script, "./index.html")).status_code == 404
+
+
+def test_changing_a_dependency_versions_the_whole_graph(tmp_path, monkeypatch):
+    import re
+    import shutil
+    from importlib.resources import files
+
+    from garmin_planner.api import public
+
+    resource_root = tmp_path / "resources"
+    resource_root.mkdir()
+    shutil.copytree(files("garmin_planner").joinpath("static"), resource_root / "static")
+    monkeypatch.setattr(public, "files", lambda package: resource_root)
+
+    def served_script():
+        with TestClient(
+            create_app(Settings(_env_file=None, data_dir=tmp_path / "data", auto_sync=False)),
+            base_url="http://127.0.0.1:8000",
+        ) as client:
+            return re.search(r'src="(/assets/js-[a-f0-9]+/app\.js)"', client.get("/").text).group(1)
+
+    before = served_script()
+    dependency = resource_root / "static" / "modules" / "calendar.js"
+    dependency.write_text(dependency.read_text() + "\n// A new calendar version\n")
+    assert served_script() != before
