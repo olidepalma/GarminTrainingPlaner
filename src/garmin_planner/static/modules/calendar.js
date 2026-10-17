@@ -111,6 +111,7 @@ async function loadCalendar() {
               ? "◷ "
               : "🏁 ") +
           (entry.is_draft ? "Borrador" : statuses[entry.kind]) +
+          (entry.manual_completion ? " · Manual" : "") +
           (entry.origin === "manual"
             ? " · Propia"
             : entry.origin === "coach"
@@ -156,8 +157,12 @@ function showCalendarDetail(entry) {
     }),
   );
   add("Deporte", sports[entry.sport] || "Otros");
-  if (entry.kind === "completed") {
+  if (entry.kind === "completed" && !entry.manual_completion) {
     add("Origen", "Garmin Connect");
+    add("Esfuerzo percibido", d.rpe == null ? "Sin registrar" : d.rpe + " / 10");
+    add("Sensaciones", {
+      0: "Muy débil", 25: "Débil", 50: "Normal", 75: "Fuerte", 100: "Muy fuerte",
+    }[d.feeling] || "Sin registrar");
     add("Tiempo", hours(d.duration_seconds));
     add("Distancia", fmt(d.distance_m / 1000, 2) + " km");
     add("Desnivel positivo", fmt(d.elevation_m, 0) + " m");
@@ -166,8 +171,9 @@ function showCalendarDetail(entry) {
       d.average_hr == null ? "No disponible" : fmt(d.average_hr, 0) + " ppm",
     );
   }
-  if (entry.kind === "planned") {
+  if (entry.kind === "planned" || entry.manual_completion) {
     add("Origen", entry.origin === "manual" ? "Sesión propia" : "Coach");
+    if (entry.manual_completion) add("Cumplimiento", "Confirmado manualmente; duración estimada según la sesión planificada.");
     add("Duración", d.minutes + " min");
     add(
       "Intensidad",
@@ -196,12 +202,12 @@ function showCalendarDetail(entry) {
     add("Objetivo", d.goal);
   }
   body.append(dl);
-  if (entry.kind === "planned") {
+  if (entry.kind === "planned" || entry.manual_completion) {
     if (d.strength_exercises?.length)
       body.append(strengthPreview(d.strength_exercises));
     const structure = d.structure || d.workout;
     if (structure) body.append(blocksPreview(structure.blocks));
-    if (entry.origin === "manual") {
+    if (entry.origin === "manual" && !entry.manual_completion) {
       const edit = document.createElement("button");
       edit.className = "ghost";
       edit.textContent = d.publication?.status
@@ -225,7 +231,7 @@ function showCalendarDetail(entry) {
         }
       };
       body.append(edit, send);
-    } else if (!entry.is_draft) {
+    } else if (!entry.is_draft && !entry.manual_completion) {
       const copy = document.createElement("button");
       copy.className = "ghost";
       copy.textContent = "Crear copia propia y editar bloques";
@@ -264,6 +270,26 @@ function showCalendarDetail(entry) {
         body.append(send);
       }
     }
+  }
+  if (!entry.is_draft && (entry.kind === "planned" || entry.manual_completion)) {
+    const complete = document.createElement("button");
+    complete.textContent = entry.manual_completion ? "Desmarcar como realizada" : "Marcar como realizada";
+    complete.onclick = async () => {
+      complete.disabled = true;
+      try {
+        await api("/api/calendar/" + encodeURIComponent(entry.id) + "/completion", {
+          completed: !entry.manual_completion,
+        });
+        $("calendar-detail").close();
+        await Promise.all([loadCalendar(), loadReview(), loadCoach()]);
+        toast(entry.manual_completion ? "Sesión de nuevo planificada." : "Sesión marcada como realizada.");
+      } catch (error) { toast(error.message, true); }
+      finally { complete.disabled = false; }
+    };
+    const hint = document.createElement("p");
+    hint.className = "muted";
+    hint.textContent = "Para sesiones sin registro en Garmin. Si también la registras con el reloj, desmarca la confirmación manual para evitar contarla dos veces. No se envía a Garmin.";
+    body.append(hint, complete);
   }
   if (entry.kind === "planned") {
     const remove = document.createElement("button");

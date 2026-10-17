@@ -95,6 +95,26 @@ def month_calendar(store, year, month, workouts=None):
                     "detail": event,
                 }
             )
+    completed = {c["entry_id"]: c for c in store.completions(start.isoformat(), end.isoformat())}
+    for entry in entries:
+        if entry["id"] in completed and not entry.get("is_draft"):
+            entry["kind"] = "completed"
+            entry["manual_completion"] = True
+    visible_ids = {entry["id"] for entry in entries}
+    for entry_id, snapshot in completed.items():
+        if entry_id not in visible_ids:
+            entries.append(
+                {
+                    "id": entry_id,
+                    "kind": "completed",
+                    "manual_completion": True,
+                    "origin": "manual" if entry_id.startswith("manual-") else "coach",
+                    "day": snapshot["day"],
+                    "sport": snapshot["sport"],
+                    "title": snapshot["title"],
+                    "detail": snapshot,
+                }
+            )
     return {
         "from": start.isoformat(),
         "through": end.isoformat(),

@@ -135,3 +135,38 @@ def test_sport_filter_and_empty_weeks_are_correct(service):
     assert data["totals"]["distance_km"] == 10
     assert sum(w["hours"] for w in data["weeks"]) == 1
     assert any(w["sessions"] == 0 for w in data["weeks"])
+
+
+def test_self_evaluation_detail_updates_clearing_and_temporary_failure(service, monkeypatch):
+    service.connect("athlete@example.test", "password", lambda: "123456")
+    detail = {"summaryDTO": {"directWorkoutRpe": 70, "directWorkoutFeel": 0}}
+    monkeypatch.setattr(GarminFake, "get_activity", lambda self, identifier: detail, raising=False)
+    service.sync()
+    today = datetime.now(UTC).date().isoformat()
+    activity = service.store.activities(today, today)[0]
+    assert activity["rpe"] == 7 and activity["feeling"] == 0
+
+    def fail(self, identifier):
+        raise RuntimeError("private upstream response")
+
+    monkeypatch.setattr(GarminFake, "get_activity", fail)
+    result = service.sync()
+    assert result["warnings"]
+    assert service.store.activities(today, today)[0]["rpe"] == 7
+    monkeypatch.setattr(GarminFake, "get_activity", lambda self, identifier: {})
+    service.sync()
+    assert service.store.activities(today, today)[0]["rpe"] is None
+
+
+def test_invalid_and_absent_self_evaluation_are_not_zero():
+    from garmin_planner.garmin import self_evaluation
+
+    assert self_evaluation({}) == {"rpe": None, "feeling": None}
+    assert self_evaluation({"directWorkoutRpe": float("nan"), "directWorkoutFeel": 120}) == {
+        "rpe": None,
+        "feeling": None,
+    }
+    assert self_evaluation({"directWorkoutRpe": 100, "directWorkoutFeel": 100}) == {
+        "rpe": 10,
+        "feeling": 100,
+    }

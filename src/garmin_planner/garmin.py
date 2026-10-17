@@ -25,6 +25,25 @@ def number(value, default=0):
         return default
 
 
+def self_evaluation(raw):
+    summary = raw.get("summaryDTO") or {}
+
+    def value(key):
+        result = raw.get(key)
+        if result is None:
+            result = summary.get(key)
+        if isinstance(result, bool):
+            return None
+        result = number(result, None)
+        return result if result is not None and result <= 100 else None
+
+    rpe, feeling = value("directWorkoutRpe"), value("directWorkoutFeel")
+    return {
+        "rpe": rpe / 10 if rpe is not None and rpe >= 10 else None,
+        "feeling": feeling if feeling in (0, 25, 50, 75, 100) else None,
+    }
+
+
 def normalize(raw: dict, timezone: str) -> dict:
     timestamp = raw.get("startTimeGMT")
     if timestamp:
@@ -59,6 +78,7 @@ def normalize(raw: dict, timezone: str) -> dict:
         "distance_m": number(raw.get("distance")),
         "elevation_m": number(raw.get("elevationGain")),
         "average_hr": number(raw.get("averageHR"), None),
+        **self_evaluation(raw),
     }
 
 
@@ -144,8 +164,26 @@ class GarminService:
             raw = client.get_activities_by_date(
                 (start - timedelta(days=1)).isoformat(), today.isoformat()
             )
-            rows = [normalize(activity, self.settings.timezone) for activity in raw]
-            rows = [row for row in rows if start.isoformat() <= row["day"] <= today.isoformat()]
+            warnings = []
+            rows = []
+            for activity in raw:
+                row = normalize(activity, self.settings.timezone)
+                if not start.isoformat() <= row["day"] <= today.isoformat():
+                    continue
+                try:
+                    detail = client.get_activity(row["id"]) or {}
+                    row.update(
+                        self_evaluation({**activity, **(detail.get("summaryDTO") or {}), **detail})
+                    )
+                except Exception:
+                    warnings.append("Faltan algunas valoraciones de esfuerzo y sensaciones.")
+                    # A transient detail failure must not erase previously synced ratings.
+                    previous_rows = self.store.activities(row["day"], row["day"])
+                    previous_row = next((a for a in previous_rows if a["id"] == row["id"]), {})
+                    for key in ("rpe", "feeling"):
+                        if row[key] is None:
+                            row[key] = previous_row.get(key)
+                rows.append(row)
             sync = {
                 "at": datetime.now(UTC).isoformat(),
                 "through": today.isoformat(),
@@ -154,7 +192,6 @@ class GarminService:
             }
             self.store.save_activities(rows, sync)
             options = self.store.get("wellness_options", {"sleep": False, "hrv": False})
-            warnings = []
             report("Actualizando recuperación de los últimos siete días…")
             for offset in range(7):
                 day = (today - timedelta(days=offset)).isoformat()

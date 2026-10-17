@@ -75,6 +75,10 @@ class Store:
                     payload TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS activity_day ON activities(day);
+                CREATE TABLE IF NOT EXISTS manual_completions (
+                    entry_id TEXT PRIMARY KEY, day TEXT NOT NULL, payload TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS completion_day ON manual_completions(day);
                 CREATE TABLE IF NOT EXISTS wellness (day TEXT PRIMARY KEY, payload TEXT NOT NULL);
             """)
             PlannedSessions.migrate(db)
@@ -180,6 +184,41 @@ class Store:
         with self.connect() as db:
             rows = db.execute(query + " ORDER BY day DESC, id DESC", args).fetchall()
         return [json.loads(row[0]) for row in rows]
+
+    def completions(self, start, end):
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT entry_id,payload FROM manual_completions WHERE day>=? AND day<=?",
+                (start, end),
+            ).fetchall()
+        return [{"entry_id": r["entry_id"], **json.loads(r["payload"])} for r in rows]
+
+    def set_completion(self, entry_id, session, completed):
+        with self.connect() as db:
+            if completed:
+                db.execute(
+                    "INSERT INTO manual_completions VALUES (?,?,?) "
+                    "ON CONFLICT(entry_id) DO NOTHING",
+                    (entry_id, session["day"], json.dumps(session)),
+                )
+            else:
+                db.execute("DELETE FROM manual_completions WHERE entry_id=?", (entry_id,))
+
+    def training_activities(self, start, end):
+        manual = [
+            {
+                "id": c["entry_id"],
+                "day": c["day"],
+                "sport": c["sport"],
+                "name": c["title"],
+                "duration_seconds": c["minutes"] * 60,
+                "distance_m": 0,
+                "elevation_m": 0,
+                "origin": "manual_completion",
+            }
+            for c in self.completions(start, end)
+        ]
+        return self.activities(start, end) + manual
 
     def save_wellness(self, day: str, value: dict):
         with self.connect() as db:

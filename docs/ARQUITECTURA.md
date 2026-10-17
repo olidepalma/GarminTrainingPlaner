@@ -37,3 +37,24 @@ bash deploy/update-lxc.sh
 ```
 
 La migración se realiza al iniciar el servicio. Después verifica login, calendario, borrador, biblioteca y conexiones; recarga la pestaña para cargar los módulos nuevos. No requiere volver a conectar Garmin/Pro ni volver a subir documentos. Para volver a una versión anterior, detén el servicio y restaura juntos código y respaldo de datos: un simple rollback de Git no revierte el esquema ni la ubicación del calendario.
+
+
+### Cumplimiento manual y autoevaluaciones Garmin
+
+El detalle del calendario muestra el esfuerzo percibido (RPE de 1 a 10) y las sensaciones
+cuando Garmin los devuelve. La sincronización consulta el detalle de las actividades del
+intervalo incremental, incluida la semana reciente, para recoger valoraciones añadidas después.
+Los valores ausentes se conservan como `null`; un fallo temporal no borra los valores anteriores.
+
+Las sesiones propias y aceptadas del coach pueden marcarse como realizadas, y desmarcarse.
+No se admite confirmar borradores ni fechas futuras. SQLite guarda en `manual_completions`
+una copia de fecha, disciplina, título y minutos planificados, con clave única de la entrada.
+Los clics repetidos no duplican cumplimiento. El registro permanece visible aunque se sustituya
+el plan original, y se puede desmarcar. Esta tabla se crea automáticamente al arrancar.
+
+El resumen semanal y el contexto agregado del coach incluyen estas confirmaciones, con duración
+estimada, separadas de las mediciones del reloj. El contexto incorpora además las valoraciones
+Garmin de los últimos siete días y las confirmaciones de las últimas seis semanas. No se publica
+ninguna actividad manual en Garmin ni se emparejan automáticamente registros: si se registra la
+misma sesión con el reloj, debe desmarcarse la confirmación manual para evitar doble contabilización.
+La vista general conserva sus métricas de actividades registradas en Garmin.

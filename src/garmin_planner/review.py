@@ -15,7 +15,7 @@ class Feedback(BaseModel):
 
 def totals(store, begin, end):
     grouped = defaultdict(lambda: {"sessions": 0, "minutes": 0, "km": 0, "elevation_m": 0})
-    for a in store.activities(begin.isoformat(), end.isoformat()):
+    for a in store.training_activities(begin.isoformat(), end.isoformat()):
         g = grouped[a["sport"]]
         g["sessions"] += 1
         g["minutes"] += round(a.get("duration_seconds", 0) / 60, 1)
@@ -69,6 +69,8 @@ def weekly_review(store, today):
             if (today - timedelta(days=42)).isoformat() <= k < today.isoformat()
         ],
         "limitations": (
+            "Incluye confirmaciones manuales con duración planificada estimada. "
+            "Evita confirmar una sesión que ya tenga registro Garmin. "
             "Volumen registrado, no TSS ni carga fisiológica. La ausencia de una actividad "
             "no demuestra una sesión incumplida. No se emparejan automáticamente sesiones. "
             "La media usa solo semanas con registros de esa disciplina; semanas vacías "

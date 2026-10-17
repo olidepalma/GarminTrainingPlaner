@@ -252,7 +252,7 @@ def context(store, setup, start, today):
         end = today - timedelta(days=offset * 7)
         begin = end - timedelta(days=6)
         grouped = defaultdict(lambda: {"sessions": 0, "minutes": 0, "km": 0, "elevation_m": 0})
-        for a in store.activities(begin.isoformat(), end.isoformat()):
+        for a in store.training_activities(begin.isoformat(), end.isoformat()):
             g = grouped[a["sport"]]
             g["sessions"] += 1
             g["minutes"] += round(a.get("duration_seconds", 0) / 60)
@@ -275,6 +275,14 @@ def context(store, setup, start, today):
         }
         if previous
         else None,
+        "manual_completions": store.completions(
+            (today - timedelta(days=41)).isoformat(), today.isoformat()
+        ),
+        "activity_self_evaluations": [
+            {k: a.get(k) for k in ("day", "sport", "rpe", "feeling")}
+            for a in store.activities((today - timedelta(days=6)).isoformat(), today.isoformat())
+            if a.get("rpe") is not None or a.get("feeling") is not None
+        ],
         "sources": [],
         "weekly_review": weekly_review(store, today),
         "own_sessions_in_requested_week": [
@@ -357,6 +365,12 @@ revisa explícitamente la estrategia previa. Prioriza el objetivo principal, com
 natación/bici/carrera en triatlón, fuerza solo si se pide; modela transiciones como dos
 sesiones el mismo día con instrucciones enlazadas. Respeta la suma de minutos por día, max_days
 y días de tiradas largas; availability va de lunes a domingo.
+manual_completions son sesiones confirmadas por la usuaria sin registro del reloj: cuentan como
+realizadas, con duración planificada estimada, no medida. Ya están incluidas en los totales.
+No sumes otra vez esos registros. No confundas el RPE real (activity_self_evaluations) con la
+intensidad prescrita. feeling usa 0=muy débil, 25=débil, 50=normal, 75=fuerte, 100=muy fuerte;
+rpe va de 1 a 10. null significa sin registrar, no esfuerzo cero.
+Garmin y las confirmaciones manuales no se emparejan automáticamente.
 Si profile.slots existe, cada sesión necesita slot: índice de franja desde 0 en ese día.
 Cada franja puede tener preferred_sport: null significa sin preferencia. Prioriza ese deporte
 para esa franja (por ejemplo, running para entrenar con un club), respetando las disciplinas
